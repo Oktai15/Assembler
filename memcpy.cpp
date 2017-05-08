@@ -17,7 +17,7 @@ void memcpy(void * dst, void const * src, size_t cnt) {
      	cnt--;
     }
 
-    std::cout << "After alignment:\n";
+    std::cout << "After alignment (begin):\n";
     std::cout << "src: ";
     std::cout << (char*)src + offset << std::endl;
     std::cout << "dst: ";
@@ -31,10 +31,10 @@ void memcpy(void * dst, void const * src, size_t cnt) {
     __m128i tmp;         // int128
     __asm__ volatile (   // open asm-insert without optimization
     "work:\n"            // set label "work"
-    "movdqu  (%1), %3\n" // %3(the same as tmp) := (%1)(tsa *new_src); can be no aligned; MEM -> REG
-    "movntdq %3, (%0)\n" // (%0)(tsa *new_dst) = %3; without caching, must be aligned; REG -> MEM
-    "cmpq  $16, %2\n"    // %2 - 16 < 0
+    "cmpq  $16, %2\n"    // %2(the same as cnt) - 16 < 0
     "jb ex\n"            // if (%2 - 16 < 0) then go to label "ex"
+    "movdqu  (%1), %3\n" // %3(tsa tmp) := (%1)(tsa *new_src); can be no aligned; MEM -> REG
+    "movntdq %3, (%0)\n" // (%0)(tsa *new_dst) = %3; without caching, must be aligned; REG -> MEM
     "add     $16,  %0\n" // %0 = %0 + 16 bytes 
     "add     $16,  %1\n" // %1 = %1 + 16 bytes
     "sub     $16,  %2\n" // %2 = %2 - 16 bytes
@@ -53,14 +53,18 @@ void memcpy(void * dst, void const * src, size_t cnt) {
     std::cout << (char*) new_src << std::endl;
     std::cout << "Left count: ";
     std::cout << cnt << std::endl;
-    /*std::cout << "new_dst: ";                       //Why have we already had good answer?
-    std::cout << (char*) new_dst << std::endl;*/
+    std::cout << "dst: ";
+    std::cout << (char*) dst << std::endl;
 
     
 
-    for (size_t i = 1; i < cnt; i++) {
+    for (size_t i = 0; i < cnt; i++) {
     	*((char*)(new_dst) + i) = *((char*)(new_src) + i);
     }
+
+ 	std::cout << "After alignment (end):\n";
+ 	std::cout << "dst: ";
+    std::cout << (char*) dst << std::endl;
     _mm_sfence(); 
 }
 
@@ -70,6 +74,7 @@ int main() {
     std::string a = "1111111111222222222233333333334444444444555555555566666666667777777777";
     char *buffer = new char[a.size()];
     memcpy(buffer, a.c_str(), a.size());
+    std::cout << "====RESULT====" << std::endl;
     std::cout << "dst: ";
     std::cout << buffer << std::endl;
     return 0;

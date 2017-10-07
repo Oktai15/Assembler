@@ -31,15 +31,6 @@ int easily_calc_count_of_words(string str) {
     return easily_calc_count_of_words(str.c_str(), str.size()) + ((str.size() == 0 || str[0] == ' ') ? 0 : 1); 
 }
 
-void print128_num(__m128i var) {
-    uint8_t *val = (uint8_t*) &var;
-    printf("Numerical: %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i \n", 
-           val[0], val[1], val[2], val[3], val[4], val[5], 
-           val[6], val[7], val[8], val[9], val[10], val[11],
-           val[12], val[13], val[14], val[15]);
-}
-
-
 int calc_count_of_words(const char *str, size_t g_sz) {
     size_t sz = g_sz;
 	size_t last;
@@ -48,7 +39,8 @@ int calc_count_of_words(const char *str, size_t g_sz) {
 	                              32, 32, 32, 32,    
                                   32, 32, 32, 32,
                                   32, 32, 32, 32);
-	__m128i zero = _mm_set_epi32(0, 0, 0, 0);
+	
+    __m128i zero = _mm_set_epi32(0, 0, 0, 0);
 	
 	is_space_now = false;
 
@@ -119,15 +111,12 @@ int calc_count_of_words(const char *str, size_t g_sz) {
         if (mask != 0 || new_index >= last) {
             __m128i tmp1, tmp2; 
             uint32_t lt, rt;
-            __asm__(
-            "psadbw  %3, %0\n"
-            "movd    %0, %2\n"
-            "movhlps %0, %0\n"
-            "movd    %0, %1\n"
-            :"=x" (tmp1), "=r"(lt), "=r"(rt), "=x"(tmp2)
-            :"0"(zero), "3"(repo)
-            );
-
+            __asm__("psadbw  %3, %0\n"
+                    "movd    %0, %2\n"
+                    "movhlps %0, %0\n"
+                    "movd    %0, %1\n"
+                    :"=x" (tmp1), "=r"(lt), "=r"(rt), "=x"(tmp2)
+                    :"0"(zero), "3"(repo));
             ans += lt + rt;
             repo = zero;
         }        
@@ -141,7 +130,9 @@ int calc_count_of_words(const char *str, size_t g_sz) {
 
     is_space_now = *(str + offset - 1) == ' ';
     for(size_t i = offset; i < sz; i++) {
-        if (*(str + i) != ' ' && is_space_now) ans++;
+        if (*(str + i) != ' ' && is_space_now) {
+        	ans++;
+        }
         is_space_now = *(str + i) == ' ';
     }
 
@@ -179,7 +170,7 @@ bool testing(int numbers_of_tests, int length_of_text) {
 
 int main() {
     srand(time(0));
-    if (testing(20, 37)) {
+    if (testing(20, 453)) {
     	cout << "Congratualtion!" << endl;
     }
     return 0;	

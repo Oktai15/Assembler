@@ -1,0 +1,3 @@
+/home/oktai/ITMO/ASM/trampoline/build/CMakeFiles/edit_cache.dir
+/home/oktai/ITMO/ASM/trampoline/build/CMakeFiles/rebuild_cache.dir
+/home/oktai/ITMO/ASM/trampoline/build/CMakeFiles/trampoline.dir

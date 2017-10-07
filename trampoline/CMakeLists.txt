@@ -1,0 +1,6 @@
+project(trampoline)
+cmake_minimum_required(VERSION 3.5)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_FLAGS -g)
+set(SOURCE_FILES main.cpp trampoline.h imm.h numerator_arguments.h allocator.h allocator.cpp)
+add_executable(${PROJECT_NAME} ${SOURCE_FILES})

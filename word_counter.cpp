@@ -67,14 +67,7 @@ int calc_count_of_words(const char *str, size_t g_sz) {
     __m128i current_cmp, next_cmp, tmp;
     __m128i repo = _mm_set_epi32(0, 0, 0, 0);
 
-    //pred-cond: have untreated elements more than 32
-    __asm__(
-    "movdqa   (%2), %1\n"
-    "pcmpeqb  %1,   %0\n"
-    :"=x"(next_cmp), "=x"(tmp)
-    :"r"(str + offset), "0"(spaces)
-    );
-    
+
     /*
         HOW IT WORKS:
 
@@ -83,60 +76,40 @@ int calc_count_of_words(const char *str, size_t g_sz) {
 		shl  :-0001000111000001|0000111100001100|0110
 		neg  :-1110111000111110|1111000011110011|1000
 		and  :-1000100000100000|1000000010000010|0000
+    
     */
 
-    for (size_t i = offset; i < last; i += 16) {
-        
-        uint32_t mask;
 
- 		current_cmp = next_cmp;
- 		int new_index= 16 + i;
- 		const char* new_str = str + new_index; 
+    //pre: have untreated elements more than 32
+    __asm__ volatile(
+    "movdqa     (%0), %1\n" // %1 = %0 (next_cmp = first 16 bytes in str)
+    "pcmpeqb     %2,  %1\n" // find spaces in %1 using cmp with spaces
+    :"=r" (str),"=x"(next_cmp), "=x"(spaces)
+    :"0"(str), "1"(next_cmp), "2"(spaces)
+    );
 
-        __m128i t0, t1, t2, t3;
-        __asm__("movdqa   (%7), %3\n"     // %3 = (%7)
-                "pcmpeqb   %3, %0\n"      // find spaces in %3
-                "movdqa    %0, %6\n"      // %6 = %0
-                "palignr   $1, %4, %6\n"  // (%4 + %6 >> 1) only 16 bytes
-                "pandn      %4, %6\n"     // %6 = %4 AND %6 
-                "psubsb     %6, %5\n"     // change "false" 1 to valid 1
-                "paddusb    %5, %1\n"     // summarize 
-                "pmovmskb   %1, %2\n"     // check on overflow
-                :"=x"(next_cmp), "=x"(repo), "=r"(mask), "=x"(t0), "=x"(t1), "=x"(t2), "=x"(t3)
-                :"r"(str + i + 16), "0"(spaces), "4"(current_cmp), "5"(zero), "1"(repo));  
+    //we will use next_cmp (which was mentioned above) as current_tmp here and so on...
+    for (sz; sz >= 32; sz -= 16) {
+        int32_t mask;
+        __asm__ volatile(
+        "add        $16,  %0\n"     // %0 = %0 + 16 (next block in str)
+        "movdqa     %3,   %1\n"     // %1 = %3 (cur is pred next)
+        "movdqa    (%0),  %2\n"     // %2 = (%0) (get next block in tmp)
+        "pcmpeqb    %4,   %2\n"     // find spaces in %2 using cmp with spaces 
+        "movdqa     %2,   %3\n"     // %3 = %2 (next = temp)
+        "palignr    $1,   %1, %2\n" // (%1 + %2 >> 1) only first 16 bytes
+        "pandn      %1,   %2\n"     // %2 = %2 and not %1
+        "pmovmskb   %2,   %5\n"     // high-order bytes, go to mask 
+        :"=r"(str), "=x"(current_cmp), "=x"(tmp), "=x"(next_cmp), "=x"(spaces), "=r"(mask)
+        :"0"(str), "1"(current_cmp), "2"(tmp), "3"(next_cmp), "4"(spaces), "5"(mask)
+        );
 
 
-        //builtin_popcount
-
-        if (mask != 0 || new_index >= last) {
-            __m128i tmp1, tmp2; 
-            uint32_t lt, rt;
-            __asm__("psadbw  %3, %0\n"
-                    "movd    %0, %2\n"
-                    "movhlps %0, %0\n"
-                    "movd    %0, %1\n"
-                    :"=x" (tmp1), "=r"(lt), "=r"(rt), "=x"(tmp2)
-                    :"0"(zero), "3"(repo));
-            ans += lt + rt;
-            repo = zero;
-        }        
+        ans += __builtin_popcount(mask); //calc h-o bytes
     }
 
-    offset = last;
-
-    if(*(str + offset - 1) == ' ' && *(str + offset) != ' ') {
-        ans--;
-    }
-
-    is_space_now = *(str + offset - 1) == ' ';
-    for(size_t i = offset; i < sz; i++) {
-        if (*(str + i) != ' ' && is_space_now) {
-        	ans++;
-        }
-        is_space_now = *(str + i) == ' ';
-    }
-
-    return ans;
+    is_space_now = false;
+    return ans + easily_calc_count_of_words(str, sz);
 }
 
 bool testing(int numbers_of_tests, int length_of_text) {
@@ -170,7 +143,7 @@ bool testing(int numbers_of_tests, int length_of_text) {
 
 int main() {
     srand(time(0));
-    if (testing(20, 453)) {
+    if (testing(20, 345)) {
     	cout << "Congratualtion!" << endl;
     }
     return 0;	

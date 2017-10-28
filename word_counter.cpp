@@ -11,9 +11,8 @@
 
 using namespace std;
 
-bool is_space_now;
-
 int easily_calc_count_of_words(const char *str, size_t sz) {
+	bool is_space_now = false;
 	int ans = 0;
 	for (size_t i = 0; i < sz; i++) {
 		if (*(str + i) == ' ') {
@@ -27,7 +26,6 @@ int easily_calc_count_of_words(const char *str, size_t sz) {
 }
 
 int easily_calc_count_of_words(string str) {
-	is_space_now = false;
     return easily_calc_count_of_words(str.c_str(), str.size()) + ((str.size() == 0 || str[0] == ' ') ? 0 : 1); 
 }
 
@@ -42,13 +40,13 @@ int calc_count_of_words(const char *str, size_t g_sz) {
 	
     __m128i zero = _mm_set_epi32(0, 0, 0, 0);
 	
-	is_space_now = false;
+	//is_space_now = false;
 
 	if (sz <= 64) {
 		return easily_calc_count_of_words(str);
 	}
 
-	is_space_now = false;
+	//is_space_now = false;
 	
 	size_t ans = (sz == 0 || str[0] == ' ') ? 0 : 1;
 	
@@ -85,12 +83,12 @@ int calc_count_of_words(const char *str, size_t g_sz) {
     "movdqa     (%0), %1\n" // %1 = %0 (next_cmp = first 16 bytes in str)
     "pcmpeqb     %2,  %1\n" // find spaces in %1 using cmp with spaces
     :"=r" (str),"=x"(next_cmp), "=x"(spaces)
-    :"0"(str), "1"(next_cmp), "2"(spaces)
+    :"0"(str), "2"(spaces)
     );
 
     //we will use next_cmp (which was mentioned above) as current_tmp here and so on...
-    for (sz; sz >= 32; sz -= 16) {
-        int32_t mask;
+    for (sz; sz >= 16; sz -= 16) {
+        uint32_t mask;
         __asm__ volatile(
         "add        $16,  %0\n"     // %0 = %0 + 16 (next block in str)
         "movdqa     %3,   %1\n"     // %1 = %3 (cur is pred next)
@@ -108,7 +106,7 @@ int calc_count_of_words(const char *str, size_t g_sz) {
         ans += __builtin_popcount(mask); //calc h-o bytes
     }
 
-    is_space_now = false;
+    //is_space_now = false;
     return ans + easily_calc_count_of_words(str, sz);
 }
 
@@ -143,7 +141,7 @@ bool testing(int numbers_of_tests, int length_of_text) {
 
 int main() {
     srand(time(0));
-    if (testing(20, 345)) {
+    if (testing(100, 5348)) {
     	cout << "Congratualtion!" << endl;
     }
     return 0;	
